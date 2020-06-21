@@ -12,7 +12,6 @@
 ** --   --------   -------   ------------------------------------
 ** 1    06/21/2020 fmuno003  Initial Creation
 *********************************************************************/
-
 package cse512
 
 import java.sql.Timestamp
@@ -66,7 +65,6 @@ object HotcellUtils
     def IsCellInBounds(x:Double, y:Double, z:Int, minX:Double, maxX:Double, minY:Double, maxY:Double, minZ:Int, maxZ:Int): Boolean =
     {
         var bool = false
-        
         if ( (minX to maxX contains x) && (minY to maxY contains y) && (minZ to maxZ contains z) )
         {
             bool = true
@@ -84,7 +82,7 @@ object HotcellUtils
         return IsBounded
     } 
 
-    def GetNeighbourCount(minX:Int, minY:Int, minZ:Int, maxX:Int, maxY:Int, maxZ:Int, Xin:Int, Yin:Int, Zin:Int): Int =
+    def GetNeighbourCount(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int, Xin:Int, Yin:Int, Zin:Int): Int =
     {
         val pointLocationInCube: Map[Int, String] = Map(0->"inside", 1 -> "face", 2-> "edge", 3-> "corner")
         val mapping: Map[String, Int] = Map("inside" -> 26, "face" -> 17, "edge" -> 11, "corner" -> 7)
@@ -95,7 +93,7 @@ object HotcellUtils
         return mapping.get(location).get.toInt
     }
 
-    def GetGScore(x: Int, y: Int, z: Int, numcells: Int, mean:Double, sd: Double, totalNeighbours: Int, sumAllNeighboursPoints: Int): Double =
+    def GetGScore(x: Int, y: Int, z: Int, numcells: Int, mean: Double, sd: Double, totalNeighbours: Int, sumAllNeighboursPoints: Int): Double =
     {
         val numerator = sumAllNeighboursPoints.toDouble - (mean * totalNeighbours.toDouble)
         val denominator = sd * math.sqrt((((numcells.toDouble * totalNeighbours.toDouble) - (totalNeighbours.toDouble * totalNeighbours.toDouble)) / (numcells.toDouble-1.0).toDouble).toDouble).toDouble

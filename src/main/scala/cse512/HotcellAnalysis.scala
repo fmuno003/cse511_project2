@@ -28,6 +28,16 @@ object HotcellAnalysis
 
     def runHotcellAnalysis(spark: SparkSession, pointPath: String): DataFrame =
     {
+        // Declaration of SQL Statements
+        var sqlPickupInfoView = "SELECT x, y, z FROM pickupInfoView WHERE IsCellInBounds(x, y, z) order by z, y, x"
+        var sqlNumPoints = "SELECT x, y, z, count(*) as numPoints FROM filteredPointsView group by z, y, x order by z, y, x"
+        var sqlNumCells = "SELECT count(*) as numCellsWithAtleastOnePoint, sum(numPoints) as totalPointsInsideTheGivenArea, sum(square(numPoints)) as squaredSumOfAllPointsInGivenArea FROM filteredPointCountDfView"
+        var sqlHotCell = "SELECT x, y, z FROM NeighboursDescView"
+
+        var sqlWhereConditions = " WHERE (view2.x = view1.x+1 or view2.x = view1.x or view2.x = view1.x-1) and (view2.y = view1.y+1 or view2.y = view1.y or view2.y = view1.y-1) and (view2.z = view1.z+1 or view2.z = view1.z or view2.z = view1.z-1) "
+        var sqlFromField = "FROM filteredPointCountDfView as view1, filteredPointCountDfView as view2 "
+        val sqlTaxiPickupInfo = "SELECT CalculateX(nyctaxitrips._c5), CalculateY(nyctaxitrips._c5), CalculateZ(nyctaxitrips._c1) FROM nyctaxitrips"
+
         // Load the original data from a data source
         var pickupInfo = spark.read.format("com.databricks.spark.csv").option("delimiter",";").option("header","false").load(pointPath);
         pickupInfo.createOrReplaceTempView("nyctaxitrips")
@@ -43,7 +53,7 @@ object HotcellAnalysis
         spark.udf.register("CalculateZ",(pickupTime: String)=>((
             HotcellUtils.CalculateCoordinate(pickupTime, 2)
         )))
-        pickupInfo = spark.sql("select CalculateX(nyctaxitrips._c5),CalculateY(nyctaxitrips._c5), CalculateZ(nyctaxitrips._c1) from nyctaxitrips")
+        pickupInfo = spark.sql(sqlTaxiPickupInfo)
         var newCoordinateName = Seq("x", "y", "z")
         pickupInfo = pickupInfo.toDF(newCoordinateName:_*)
         pickupInfo.show()
@@ -56,15 +66,6 @@ object HotcellAnalysis
         val minZ = 1
         val maxZ = 31
         val numCells = (maxX - minX + 1)*(maxY - minY + 1)*(maxZ - minZ + 1)
-
-        // Declaration of SQL Statements
-        var sqlPickupInfoView = "SELECT x, y, z FROM pickupInfoView WHERE IsCellInBounds(x, y, z) order by z, y, x"
-        var sqlNumPoints = "SELECT x, y, z, count(*) as numPoints FROM filteredPointsView group by z, y, x order by z, y, x"
-        var sqlNumCells = "SELECT count(*) as numCellsWithAtleastOnePoint, sum(numPoints) as totalPointsInsideTheGivenArea, sum(square(numPoints)) as squaredSumOfAllPointsInGivenArea FROM filteredPointCountDfView"
-        var sqlHotCell = "SELECT x, y, z FROM NeighboursDescView"
-
-        var sqlWhereConditions = " WHERE (view2.x = view1.x+1 or view2.x = view1.x or view2.x = view1.x-1) and (view2.y = view1.y+1 or view2.y = view1.y or view2.y = view1.y-1) and (view2.z = view1.z+1 or view2.z = view1.z or view2.z = view1.z-1) "
-        var sqlFromField = "FROM filteredPointCountDfView as view1, filteredPointCountDfView as view2 "
 
         // Create a temporary View of PickupInfo
         pickupInfo.createOrReplaceTempView("pickupInfoView")
