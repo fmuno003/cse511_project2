@@ -26,22 +26,21 @@ object HotzoneUtils {
 
     var minX: Double = 0
     var maxX: Double = 0
-
-    minX = Math.min(aX, cX)
-    maxX = Math.max(aX, cX)
-
     var minY: Double = 0
     var maxY: Double = 0
 
+    minX = Math.min(aX, cX)
+    maxX = Math.max(aX, cX)
     minY = Math.min(aY, cY)
     maxY = Math.max(aY, cY)
 
-    if (pointX >= minX && pointX <= maxX && pointY >= minY && pointY <= maxY) {
+    if (pointX >= minX && pointX <= maxX && pointY >= minY && pointY <= maxY) 
+    {
       true
-    } else {
+    } 
+    else 
+    {
       false
     }
-
   }
-
 }
