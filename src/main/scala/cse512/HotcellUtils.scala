@@ -52,25 +52,31 @@ object HotcellUtils {
     (x * x).toDouble
   }
 
+  def checkBoundary(point: Int, minVal: Int, maxVal: Int) : Int =
+  {
+    var IsBounded = 0
+    if ( (point == minVal) || (point == maxVal) )
+    {
+      IsBounded = 1
+    }
+    IsBounded
+  }
+
   def getCountOfNeighbourCells(x: Int, y: Int, z: Int, minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int): Int = {
-    var numOfCells = 0
-    if (x == minX || x == maxX) {
-      numOfCells += 1
-    }
-    if (y == minY || y == maxY) {
-      numOfCells += 1
-    }
-    if (z == minZ || z == maxZ) {
-      numOfCells += 1
-    }
+    val initialState = checkBoundary(x, minX, maxX) + checkBoundary(y, minY, maxY) + checkBoundary(z, minZ, maxZ)
     var returnValue = 0
-    if (numOfCells == 1) returnValue = 17
-    else if (numOfCells == 2) returnValue = 11
-    else if (numOfCells == 3) returnValue = 7
-    else returnValue = 26
+    if (initialState == 1) returnValue = 18
+    else if (initialState == 2) returnValue = 12
+    else if (initialState == 3) returnValue = 8
+    else returnValue = 27
 
     returnValue
   }
+
+  def cellIsInBounds(x:Double, y:Double, z:Int, minX:Double, maxX:Double, minY:Double, maxY:Double, minZ:Int, maxZ:Int): Boolean = {
+    x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ
+  }
+
 
   def calculateMeanAndStandardDeviation(numOfCells: Double, sum: Double, sumOfSquares: Double): (Double, Double) = {
     val mean = sum.toDouble/numOfCells.toDouble
