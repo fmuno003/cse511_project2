@@ -29,10 +29,8 @@ object HotzoneAnalysis {
     spark.udf.register("ST_Contains",(queryRectangle:String, pointString:String)=>(HotzoneUtils.ST_Contains(queryRectangle, pointString)))
     val joinDf = spark.sql("select rectangle._c0 as rectangle, point._c5 as point from rectangle,point where ST_Contains(rectangle._c0,point._c5)")
     joinDf.createOrReplaceTempView("joinResult")
-//    joinDf.show()
 
     val resultDf = spark.sql("select rectangle, count(point) as numPoints from joinResult group by rectangle order by rectangle asc")
-//    val resultDf = joinDf.groupBy("rectangle").count().sort("rectangle")
     resultDf.createOrReplaceTempView("resultView")
     println("Hotzone complete!")
     resultDf.coalesce(1)
