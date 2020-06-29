@@ -36,11 +36,11 @@ object HotzoneUtils {
 
     if (pointX >= minX && pointX <= maxX && pointY >= minY && pointY <= maxY) 
     {
-      true
+      return true
     } 
     else 
     {
-      false
+      return false
     }
   }
 }
