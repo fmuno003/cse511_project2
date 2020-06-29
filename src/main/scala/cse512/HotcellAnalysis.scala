@@ -41,33 +41,40 @@ def runHotcellAnalysis(spark: SparkSession, pointPath: String): DataFrame = {
 
   val numOfCells = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1)
 
-  val inboundPoints = spark.sql("select x, y, z from pickupinfo where x >= " + minX + " and x <= " + maxX + " and y >= " + minY  + " and y <= " + maxY + " and z >= " + minZ + " and z <= " + maxZ).persist()
+  spark.udf.register("cellIsInBounds", (x:Double, y:Double, z:Int, minX:Double, maxX:Double, minY:Double, maxY:Double, minZ:Int, maxZ:Int) => HotcellUtils.cellIsInBounds(x, y, z, minX, maxX, minY, maxY, minZ, maxZ))
+  val inboundPoints = spark.sql("select x, y, z from pickupinfo where cellIsInBounds(x, y, z, " + minX + ", " + maxX + ", " + minY + ", " + maxY + ", " + minZ + ", " + maxZ +")").persist()
   inboundPoints.createOrReplaceTempView("inboundPoints")
-  val countInboundPoints = spark.sql("select x, y, z, count(*) as pointValues from inboundPoints group by z, y, x").persist()
+  val countInboundPoints = spark.sql("select x, y, z, count(*) as pointValues from inboundPoints group by x, y, z").persist()
   countInboundPoints.createOrReplaceTempView("countPoints")
 
-  spark.udf.register("square", (inputX: Int) => HotcellUtils.square(inputX))
-  val squaredSumOfPoints = spark.sql("select sum(pointValues) as sumVal, sum(square(pointValues)) as sumOfSquares from countPoints")
+  spark.udf.register("square", (x: Int) => HotcellUtils.square(x))
+  val squaredSumOfPoints = spark.sql("select count(*) as cellsWithPoints, sum(pointValues) as sumVal, sum(square(pointValues)) as sumOfSquares from countPoints")
   squaredSumOfPoints.createOrReplaceTempView("squaredSumOfPoints")
 
-  val sumVal = squaredSumOfPoints.first().getLong(0)
-  val sumOfSquares = squaredSumOfPoints.first().getDouble(1)
+  val sumVal = squaredSumOfPoints.first().getLong(1)
+  val sumOfSquares = squaredSumOfPoints.first().getDouble(2)
 
   val (mean, sd) = HotcellUtils.calculateMeanAndStandardDeviation(numOfCells, sumVal, sumOfSquares)
 
   spark.udf.register("CountNeighborCells", (x: Int, y: Int, z: Int, minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) => HotcellUtils.getCountOfNeighbourCells(x, y, z, minX, minY, minZ, maxX, maxY, maxZ))
-  val neighbours = spark.sql("select CountNeighborCells(a1.x, a1.y, a1.z" + "," + minX + "," + minY + "," + minZ + "," + maxX + "," + maxY + "," + maxZ + ") as neighbourCount, count(*) as countAll, a1.x as x, a1.y as y, a1.z as z, sum(a2.pointValues) as totalSum from countPoints as a1, countPoints as a2 where (a2.x = a1.x + 1 or a2.x = a1.x or a2.x = a1.x - 1) and (a2.y = a1.y + 1 or a2.y = a1.y or a2.y = a1.y - 1) and (a2.z = a1.z + 1 or a2.z = a1.z or a2.z = a1.z - 1) group by a1.z, a1.y, a1.x order by a1.z, a1.y, a1.x").persist()
+  val neighbours = spark.sql("select view_1.x as x, view_1.y as y, view_1.z as z, " +
+    "CountNeighborCells(view_1.x, view_1.y, view_1.z" + "," + minX + "," + minY + "," + minZ + "," + maxX + "," + maxY + "," + maxZ + ") as neighbourCount, " +
+    "count(*) as validPoints, sum(view_2.pointValues) as totalSum " +
+    "from countPoints as view_1, countPoints as view_2 where " +
+    "(view_2.x = view_1.x + 1 or view_2.x = view_1.x or view_2.x = view_1.x - 1) and " +
+    "(view_2.y = view_1.y + 1 or view_2.y = view_1.y or view_2.y = view_1.y - 1) and " +
+    "(view_2.z = view_1.z + 1 or view_2.z = view_1.z or view_2.z = view_1.z - 1) " +
+    "group by view_1.x, view_1.y, view_1.z").persist()
   neighbours.createOrReplaceTempView("NeighborsCount")
 
   spark.udf.register("ZScore", (sum: Int, count: Int, mean: Double, sd: Double, numOfCells: Int) => HotcellUtils.calculateZScore(sum, count, mean, sd, numOfCells))
   val ZScoreDF = spark.sql("select ZScore(totalSum, neighbourCount, " + mean + ", " + sd + ", " + numOfCells + ") as zscore, x, y, z from NeighborsCount order by zscore desc").persist()
   ZScoreDF.createOrReplaceTempView("ZScoreDesc")
-//  ZScoreDF.show()
+  ZScoreDF.show()
 
   val finalOutput = spark.sql("select x, y, z from ZScoreDesc")
   finalOutput.createOrReplaceTempView("finalResult")
   finalOutput.show()
-  println("Hotcell complete!")
   finalOutput.coalesce(1)
 }
 
