@@ -87,8 +87,8 @@ object HotcellUtils {
   def calculateZScore(sum: Int, count: Int, mean: Double, sd: Double, totalNumOfPoints: Int): Double = {
     var num = 0.0
     var den = 0.0
-    num = sum.toDouble - mean*count.toDouble
-    den = sd*Math.sqrt((count.toDouble*totalNumOfPoints.toDouble - Math.pow(count.toDouble, 2))/(totalNumOfPoints.toDouble - 1.0))
+    num = sum.toDouble - mean * count.toDouble
+    den = sd * Math.sqrt((count.toDouble * totalNumOfPoints.toDouble - Math.pow(count.toDouble, 2))/(totalNumOfPoints.toDouble - 1.0))
     num/den
   }
 }
