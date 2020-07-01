@@ -30,18 +30,21 @@ object Entrance extends App
         {
             if (paramOffset == args.length || args(paramOffset).toLowerCase.contains("analysis"))
             {
-                // Turn in the previous query
-                if (currentQueryIdx != -1) queryLoader(spark, currentQueryName, currentQueryParams, args(0) + currentQueryIdx)
+		// Turn in the previous query
+                if (currentQueryIdx != -1) 
                 {
-                    // Start a new query call
-                    if (paramOffset == args.length)
-                    {
-                        return
-                    }
-                    currentQueryName = args(paramOffset)
-                    currentQueryParams = ""
-                    currentQueryIdx = currentQueryIdx + 1
+                  queryLoader(spark, currentQueryName, currentQueryParams, args(0) + currentQueryIdx)
                 }
+
+                // Start a new query call
+                if (paramOffset == args.length) 
+                {
+                  return
+                }
+
+                currentQueryName = args(paramOffset)
+                currentQueryParams = ""
+                currentQueryIdx = currentQueryIdx + 1
             }
             else
             {

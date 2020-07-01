@@ -6,7 +6,7 @@ object HotzoneUtils
 
         val points = pointString.split(",")
         val rectanglePoints = queryRectangle.split(",")
-        if ( (points.length != 2) || (reactanglePoints.length != 4) )
+        if ( (points.length != 2) || (rectanglePoints.length != 4) )
         {
             return false
         }
