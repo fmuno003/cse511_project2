@@ -1,56 +1,39 @@
-/*****************************************************************
-** File: HotzoneAnalysis.scala
-** Authors:     Dustin Hoppe
-**              Francisco Munoz
-**              Isaac Ayeni
-**              Snajeev Kulkarni
-** Date: 06/21/2020
-**************************
-** Change History
-**************************
-** PR   Date        Author  Description 
-** --   --------   -------   ------------------------------------
-** 1    06/21/2020 fmuno003  Initial Creation
-*********************************************************************/
 package cse512
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode, SparkSession}
+import org.apache.spark.SparkContext._
 
-object HotzoneAnalysis
-{
-    Logger.getLogger("org.spark_project").setLevel(Level.WARN)
-    Logger.getLogger("org.apache").setLevel(Level.WARN)
-    Logger.getLogger("akka").setLevel(Level.WARN)
-    Logger.getLogger("com").setLevel(Level.WARN)
+object HotzoneAnalysis {
 
-    def runHotZoneAnalysis(spark: SparkSession, pointPath: String, rectanglePath: String): DataFrame =
-    {
-        // SQL Statement Declarations
-        var sqlPointData = "SELECT trim(_c5) as _c5 FROM point"
-        var sqlDatasetJoin = "SELECT rectangle._c0 as rectangle, point._c5 as point FROM rectangle, point WHERE ST_Contains(rectangle._c0, point._c5)"
-        var sqlOrderedJoin = "SELECT rectangle, count(point) FROM joinResult group by rectangle order by rectangle"
+  Logger.getLogger("org.spark_project").setLevel(Level.WARN)
+  Logger.getLogger("org.apache").setLevel(Level.WARN)
+  Logger.getLogger("akka").setLevel(Level.WARN)
+  Logger.getLogger("com").setLevel(Level.WARN)
 
-        var pointDf = spark.read.format("com.databricks.spark.csv").option("delimiter",";").option("header","false").load(pointPath);
-        pointDf.createOrReplaceTempView("point")
+  def runHotZoneAnalysis(spark: SparkSession, pointPath: String, rectanglePath: String): DataFrame = {
 
-        // Parse point data formats
-        spark.udf.register("trim",(string : String)=>(string.replace("(", "").replace(")", "")))
-        pointDf = spark.sql(sqlPointData)
-        pointDf.createOrReplaceTempView("point")
+    var pointDf = spark.read.format("com.databricks.spark.csv").option("delimiter",";").option("header","false").load(pointPath)
+    pointDf.createOrReplaceTempView("point")
 
-        // Load rectangle data
-        val rectangleDf = spark.read.format("com.databricks.spark.csv").option("delimiter","\t").option("header","false").load(rectanglePath);
-        rectangleDf.createOrReplaceTempView("rectangle")
+    // Parse point data formats
+    spark.udf.register("trim",(string : String)=>(string.replace("(", "").replace(")", "")))
+    pointDf = spark.sql("select trim(_c5) as _c5 from point")
+    pointDf.createOrReplaceTempView("point")
 
-        // Join two datasets
-        spark.udf.register("ST_Contains",(queryRectangle:String, pointString:String)=>(HotzoneUtils.ST_Contains(queryRectangle, pointString)))
-        val joinDf = spark.sql(sqlDatasetJoin)
-        joinDf.createOrReplaceTempView("joinResult")
+    // Load rectangle data
+    val rectangleDf = spark.read.format("com.databricks.spark.csv").option("delimiter","\t").option("header","false").load(rectanglePath)
+    rectangleDf.createOrReplaceTempView("rectangle")
 
-        val orderedJoinDf = spark.sql(sqlOrderedJoin).persist()
-        orderedJoinDf.createOrReplaceTempView("orderedJoin")
+    // Join two datasets
+    spark.udf.register("ST_Contains",(queryRectangle:String, pointString:String)=>(HotzoneUtils.ST_Contains(queryRectangle, pointString)))
+    val joinDf = spark.sql("select rectangle._c0 as rectangle, point._c5 as point from rectangle,point where ST_Contains(rectangle._c0,point._c5)")
+    joinDf.createOrReplaceTempView("joinResult")
 
-        return orderedJoinDf.coalesce(1)
-    }
+    val resultDf = spark.sql("select rectangle, count(point) as numPoints from joinResult group by rectangle order by rectangle asc")
+    resultDf.createOrReplaceTempView("resultView")
+    println("Hotzone complete!")
+    resultDf.coalesce(1)
+  }
+
 }
